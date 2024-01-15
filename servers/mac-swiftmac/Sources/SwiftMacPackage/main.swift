@@ -4,7 +4,7 @@ import Darwin
 import Foundation
 
 /* Global Constants */
-let version = "1.0.4"
+let version = "1.0.5"
 let name = "swiftmac"
 let speaker = NSSpeechSynthesizer()
 let defaultRate: Float = 200
@@ -145,6 +145,7 @@ func replaceBasePuncs(_ line: String) -> String {
   #endif
   let l = replaceCore(line)
   return replaceCore(l)
+    .replacingOccurrences(of: "%", with: " percent ")
     .replacingOccurrences(of: "$", with: " dollar ")
 
 }
@@ -382,7 +383,7 @@ func dispatchSpeaker() async {
   #if DEBUG
     debugLogger.log("Enter: dispatchSpeaker")
   #endif
-  let s = " "+ss.popBacklog()+" "
+  let s = " " + ss.popBacklog() + " "
   #if DEBUG
     debugLogger.log("speaking: \(s)")
   #endif
