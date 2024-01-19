@@ -117,12 +117,10 @@
 
 ;;;  sox-gen-p:
 
-(defvar sox-gen-p
-  (eval-when-compile (executable-find "sox"))
-  "Is sox available?")
+(defvar sox-gen-p sox-sox "Is sox available?")
 
 ;;;  SoX Command Generator:
-(defvar sox-gen-play (executable-find "play")
+(defconst sox-gen-play (executable-find "play")
   "Location of play from SoX.")
 
 (defun sox-gen-cmd (cmd)

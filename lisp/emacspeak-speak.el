@@ -285,8 +285,8 @@ normally bound to \\[emacspeak-table-display-table-in-region]."
       (insert (format "%s\n" text)))))
 
 (defvar emacspeak-notifications-gc-timer
-  (run-at-time 1800 1800 #'emacspeak-notifications-truncate)
-  "Idle timer that runs every 30 minutes to cleanup notifications.")
+     (run-at-time 43200 43200 #'emacspeak-notifications-truncate)
+  "Idle timer that runs every 12 hours  to cleanup notifications.")
 
 ;;;  Completion helper:
 
@@ -1537,11 +1537,12 @@ Interactive prefix arg speaks buffer info."
    (zerop
     (shell-command
      "pacmd list-sinks | grep 'active port:'  | grep  Headphones"))))
+(defconst emacspeak-wpctl (executable-find "wpctl") "wpctl executable")
 
 (defconst ems--vol-cmd
   (eval-when-compile
     (cond
-     ((executable-find "wpctl") ; pipewire
+     (emacspeak-wpctl ; pipewire
       "wpctl get-volume @DEFAULT_AUDIO_SINK@")
      (t 
       (concat
@@ -1568,8 +1569,8 @@ Interactive prefix arg speaks buffer info."
 Optional interactive prefix arg `log-msg' logs spoken info to
 *Messages*."
   (interactive "P")
-  (cl-declare (special minor-mode-alist))
-  (let* ((emacspeak-speak-show-volume (executable-find "amixer"))
+  (cl-declare (special minor-mode-alist ems--vol-cmd))
+  (let* ((emacspeak-speak-show-volume ems--vol-cmd)
          (info (format-mode-line minor-mode-alist)))
     (when log-msg (ems--log-message info))
     (tts-with-punctuations 'some
@@ -1779,7 +1780,7 @@ Seconds value is also placed in the kill-ring."
 (defun emacspeak-setup-get-revision ()
   "Get SHA checksum of current revision that is suitable for spoken output."
   (let ((default-directory emacspeak-directory))
-    (if (and (executable-find "git")
+    (if (and emacspeak-git
              (file-exists-p (expand-file-name ".git" emacspeak-directory)))
         (propertize
          (shell-command-to-string "git show -s --pretty=format:%h HEAD ")
@@ -2834,10 +2835,12 @@ Filters out loopback for convenience."
 ;;;###autoload
 (defun emacspeak-selective-display (&optional arg)
   "Continuously adjust selective-display.
-Use `,' and `.' to continuously decrease/increase `selective-display'. "
+Use `,' and `.' to continuously decrease/increase `selective-display'.
+ If not specified, `arg' defaults to current-column."
   (interactive "P")
   (cl-declare (special selective-display))
-  (setq selective-display (and arg (prefix-numeric-value arg)))
+  (setq selective-display
+        (if arg (prefix-numeric-value arg) (current-column)))
   (let ((key (event-basic-type last-command-event)))
     (emacspeak-auditory-icon 'repeat-start)
     (cl-case key
@@ -2857,11 +2860,17 @@ Use `,' and `.' to continuously decrease/increase `selective-display'. "
     (set-transient-map
      (let ((map (make-sparse-keymap)))  ; map
        (dolist (key '("," "."))
-         (define-key map key (lambda () (interactive) (emacspeak-selective-display selective-display))))
+         (define-key
+          map key
+          (lambda ()
+            (interactive)
+            (emacspeak-selective-display selective-display))))
        map)
      t                                  ; continue predicate
      (lambda nil (emacspeak-auditory-icon 'repeat-end)) ; done action
-     (propertize (format "Selective Display: %s" selective-display) 'personality voice-bolden))))
+     (propertize
+      (format "Selective Display: %s" selective-display)
+      'personality voice-bolden))))
 
 ;;; Cue window buffer change:
 
@@ -2878,5 +2887,33 @@ Use `,' and `.' to continuously decrease/increase `selective-display'. "
          (with-current-buffer (window-buffer w)
            (emacspeak-speak-windowful))
          (sox-multiwindow 'swap 1.25)) 0 'local)))
+
+;;; Bug Reporter:
+(defconst emacspeak-bug-address "emacspeak@emacspeak.net" "List address")
+
+(defun emacspeak-submit-bug ()
+  "Function to submit a bug to the Emacspeak list"
+  (interactive)
+  (require 'reporter)
+  (when
+      (yes-or-no-p "Are you sure you want to submit a bug report? ")
+    (let ((vars
+           '(
+             window-system window-system-version emacs-version system-type
+             emacspeak-version emacspeak-show-point
+             dtk-program dtk-speech-rate dtk-character-scale
+             dtk-split-caps dtk-punctuation-mode visual-line-mode
+             emacspeak-line-echo  emacspeak-word-echo emacspeak-character-echo 
+             emacspeak-auditory-icon-function emacspeak-audio-indentation )))
+      (mapc
+       #'(lambda (x)
+           (if (not (and (boundp x) (symbol-value x)))
+               (setq vars (delq x vars))))
+       vars)
+      (reporter-submit-bug-report
+       emacspeak-bug-address 
+       (concat "Emacspeak Version: " emacspeak-version )
+       vars nil nil
+       "Description of Problem:"))))
 
 ;;;  end of file
