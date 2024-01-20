@@ -1776,43 +1776,28 @@ Seconds value is also placed in the kill-ring."
 (defvar emacspeak-codename
   (propertize "VirtualDog" 'face 'bold)
   "Code name of present release.")
-
-(defun emacspeak-setup-get-revision ()
-  "Get SHA checksum of current revision that is suitable for spoken output."
-  (let ((default-directory emacspeak-directory))
-    (if (and emacspeak-git
-             (file-exists-p (expand-file-name ".git" emacspeak-directory)))
-        (propertize
-         (shell-command-to-string "git show -s --pretty=format:%h HEAD ")
-         'personality voice-smoothen)
-      "")))
-
 (defvar emacspeak-version
-  (concat "59.0,   " emacspeak-codename)
+(concat "59.0,   " emacspeak-codename emacspeak-git-revision)
   "Version number for Emacspeak.")
 
-(defun emacspeak-speak-version (&optional speak-rev)
+(defun emacspeak-speak-version (&optional speak-rev )
   "Announce version information for running emacspeak.
 Optional interactive prefix arg `speak-rev' speaks only the Git revision."
   (interactive "P")
-  (cl-declare (special emacspeak-version emacspeak-sounds-directory
-                       emacspeak-m-player-program
-                       emacspeak-use-auditory-icons))
+  (cl-declare (special emacspeak-use-auditory-icons))
   (let ((signature "Emacspeak "))
     (when
         (and (null speak-rev) emacspeak-use-auditory-icons
-             emacspeak-m-player-program)
-      (start-process
-       "mp3" nil "mplayer"
-       (expand-file-name "emacspeak.mp3" emacspeak-sounds-directory)))
+             emacspeak-mplayer)
+      (start-process "mp3" nil "mplayer" emacspeak-icon))
     (tts-with-punctuations
      'some
      (dtk-speak-and-echo
       (concat
        signature
        (if speak-rev
-           (emacspeak-setup-get-revision)
-         (concat emacspeak-version " " (emacspeak-setup-get-revision))))))))
+           emacspeak-git-revision
+          emacspeak-version))))))
 
 (defun emacspeak-speak-current-kill (&optional count)
   "Speak the current kill.
@@ -2912,7 +2897,7 @@ Use `,' and `.' to continuously decrease/increase `selective-display'.
        vars)
       (reporter-submit-bug-report
        emacspeak-bug-address 
-       (concat "Emacspeak Version: " emacspeak-version )
+       (concat "Emacspeak: " emacspeak-version)
        vars nil nil
        "Description of Problem:"))))
 
